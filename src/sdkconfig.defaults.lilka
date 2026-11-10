@@ -1,0 +1,17 @@
+# Lilka v2 standalone viewer. Load after sdkconfig.defaults.esp32s3:
+#   -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.esp32s3;sdkconfig.defaults.lilka" -DESP_SDR_LILKA=ON
+#
+# Keira's multiboot runs this app image from its second OTA slot (0x650000),
+# beyond 2 MB, so the image must describe the real 16 MB flash.
+# CONFIG_ESPTOOLPY_FLASHSIZE_2MB is not set
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+# Lilka v2 (ESP32-S3 N16R8) runs its flash in QIO, like Keira.
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+# The image shares Keira's flash: never write PHY calibration data or Wi-Fi
+# settings into Keira's NVS partition (the app also skips nvs_flash_init).
+# CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE is not set
+# CONFIG_ESP_WIFI_NVS_ENABLED is not set
+
+# No serial I/Q protocol in this build; logs still go to the USB console.
+# CONFIG_ESP_SDR_UART_ENABLED is not set

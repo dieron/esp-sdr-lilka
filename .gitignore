@@ -1,0 +1,4 @@
+firmware/
+screenshots/
+*.pyc
+__pycache__/

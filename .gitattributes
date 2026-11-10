@@ -1,0 +1,2 @@
+# Keep the patch byte-exact so git apply works after a Windows checkout.
+*.patch -text
