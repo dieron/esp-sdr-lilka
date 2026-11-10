@@ -4,7 +4,10 @@ A pocket spectrum analyzer and waterfall for the [Lilka v2](https://github.com/l
 (ESP32-S3), using the chip's own Wi-Fi radio as the receiver. No extra RF
 hardware, and it runs straight from Keira's file manager.
 
-![icon](catalog/icon.png)
+| | |
+| --- | --- |
+| ![PCS 1900 cell towers](catalog/screenshot-1-pcs-1900.png) | ![2.4 GHz ISM band with Wi-Fi](catalog/screenshot-2-ism-band.png) |
+| ![Wi-Fi channel 11 burst](catalog/screenshot-3-wifi.png) | ![Preset list](catalog/screenshot-5-presets.png) |
 
 It's a front end for [ESPARGOS/esp-sdr](https://github.com/ESPARGOS/esp-sdr).
 ESP-SDR does the hard part: tuning, gain and raw I/Q snapshots through the
@@ -53,8 +56,8 @@ storage is turned off.
 | B | Gain: fixed 60 at start → 70 → 80 → AGC → 10 … 60 |
 | C | Peak hold on/off |
 | D | Preset list: UP/DOWN to move, LEFT/RIGHT to page, A or D to tune, B to close |
-| START | Pause |
-| SELECT | Hold 1 s: back to Keira. Tap: screenshot (see below). |
+| START | Pause. With a PC listening, also saves a screenshot (see below). |
+| SELECT | Hold 1 s: back to Keira. Tap: screenshot, which also works on the preset list. |
 
 **Gain is fixed by default.** The radio's AGC is built for Wi-Fi packets and
 changes gain on nearly every snapshot. That moves whole waterfall rows by up
@@ -91,7 +94,11 @@ pip install pyserial
 python tools/lilka_screenshot.py COM5          # or /dev/ttyACM0 on Linux
 ```
 
-Each short tap of SELECT on the Lilka saves the screen as `lilka-sdr-<n>.png`.
+Pressing START (pause) saves the frozen frame as `lilka-sdr-<n>.png`, without
+the PAUSED label; press START again to go on. A short tap of SELECT also saves
+one, and works on the preset list too. After a change of frequency, span or
+gain, wait about 10 seconds so the waterfall fills before you take a shot.
+The app only sends screenshots while a PC is connected over USB.
 
 ## The bottom of the screen
 

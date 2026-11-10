@@ -51,10 +51,10 @@ index bb82010..cf9b416 100644
  # is also the artifact exporter's source of revision and UTC build time.
 diff --git a/main/lilka/lilka_app.c b/main/lilka/lilka_app.c
 new file mode 100644
-index 0000000..b1a4fdc
+index 0000000..476cb7b
 --- /dev/null
 +++ b/main/lilka/lilka_app.c
-@@ -0,0 +1,811 @@
+@@ -0,0 +1,822 @@
 +/* ESP-SDR on Lilka: a standalone 1.84-2.79 GHz spectrum and waterfall viewer.
 + *
 + * Each frame takes one ESP-SDR snapshot (up to 16380 samples), averages
@@ -67,6 +67,7 @@ index 0000000..b1a4fdc
 +#include <string.h>
 +
 +#include "dsps_fft2r.h"
++#include "driver/usb_serial_jtag.h"
 +#include "esp_heap_caps.h"
 +#include "esp_log.h"
 +#include "esp_ota_ops.h"
@@ -615,7 +616,7 @@ index 0000000..b1a4fdc
 +        "B  GAIN 10-80, THEN AGC",
 +        "C  PEAK HOLD",
 +        "D  PRESET LIST (WIFI, BLE, CELL...)",
-+        "START  PAUSE",
++        "START  PAUSE (AND SCREENSHOT TO PC)",
 +        "SELECT  HOLD: KEIRA, TAP: SCREENSHOT",
 +    };
 +    app->ntext = 0;
@@ -726,7 +727,14 @@ index 0000000..b1a4fdc
 +    static uint16_t row[W];
 +    static char hex[W * 4 + 1];
 +    static const char digits[] = "0123456789abcdef";
++    /* Only with a PC on the USB port: without one, console writes wait on
++     * timeouts and would stall the app. */
++    if (!usb_serial_jtag_is_connected()) return;
++    bool paused = app->paused;
++    app->paused = false; /* no PAUSED label in the picture */
++    app->msg_until_ms = 0;
 +    build_text();
++    app->paused = paused;
 +    build_wf_lut();
 +    printf("\nLILKA-SHOT BEGIN %d %d\n", W, LCD_HEIGHT);
 +    for (int y = 0; y < LCD_HEIGHT; y++) {
@@ -796,7 +804,10 @@ index 0000000..b1a4fdc
 +        app->menu_top = 0;
 +        menu_move(0);
 +    }
-+    if (b->pressed[BTN_START]) app->paused = !app->paused;
++    if (b->pressed[BTN_START]) {
++        app->paused = !app->paused;
++        if (app->paused) send_screenshot(); /* pausing also saves the frozen frame */
++    }
 +}
 +
 +void lilka_app_run(void) {

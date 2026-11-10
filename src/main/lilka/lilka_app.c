@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "dsps_fft2r.h"
+#include "driver/usb_serial_jtag.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
@@ -558,7 +559,7 @@ void lilka_early_init(void) {
         "B  GAIN 10-80, THEN AGC",
         "C  PEAK HOLD",
         "D  PRESET LIST (WIFI, BLE, CELL...)",
-        "START  PAUSE",
+        "START  PAUSE (AND SCREENSHOT TO PC)",
         "SELECT  HOLD: KEIRA, TAP: SCREENSHOT",
     };
     app->ntext = 0;
@@ -669,7 +670,14 @@ static void send_screenshot(void) {
     static uint16_t row[W];
     static char hex[W * 4 + 1];
     static const char digits[] = "0123456789abcdef";
+    /* Only with a PC on the USB port: without one, console writes wait on
+     * timeouts and would stall the app. */
+    if (!usb_serial_jtag_is_connected()) return;
+    bool paused = app->paused;
+    app->paused = false; /* no PAUSED label in the picture */
+    app->msg_until_ms = 0;
     build_text();
+    app->paused = paused;
     build_wf_lut();
     printf("\nLILKA-SHOT BEGIN %d %d\n", W, LCD_HEIGHT);
     for (int y = 0; y < LCD_HEIGHT; y++) {
@@ -739,7 +747,10 @@ static void handle_buttons(const buttons_t *b) {
         app->menu_top = 0;
         menu_move(0);
     }
-    if (b->pressed[BTN_START]) app->paused = !app->paused;
+    if (b->pressed[BTN_START]) {
+        app->paused = !app->paused;
+        if (app->paused) send_screenshot(); /* pausing also saves the frozen frame */
+    }
 }
 
 void lilka_app_run(void) {
