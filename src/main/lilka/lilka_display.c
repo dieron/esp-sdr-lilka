@@ -54,7 +54,7 @@ void lcd_init(void) {
 
     spi_bus_config_t bus = {
         .mosi_io_num = LILKA_SPI_MOSI,
-        .miso_io_num = -1,
+        .miso_io_num = LILKA_SPI_MISO, /* the SD card shares this bus */
         .sclk_io_num = LILKA_SPI_SCK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,

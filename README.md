@@ -34,7 +34,8 @@ storage is turned off.
 
 * A **status bar**: frequency, span, gain, reference level, frames per second.
 * A **spectrum** (65 dB tall), with Wi-Fi channel markers and peak hold.
-* A **waterfall**: the newest row at the top, about 8 seconds of history.
+* A **waterfall** down to the bottom of the screen: the newest row at the top,
+  about 12 seconds of history.
 * Tuning range **1840 to 2790 MHz**. It's most sensitive around 2.4 GHz,
   where the radio's filters are designed to work.
 * Span **80, 40 or 16 MHz**. Each frame is one snapshot of 16,380 samples,
@@ -56,8 +57,8 @@ storage is turned off.
 | B | Gain: fixed 60 at start → 70 → 80 → AGC → 10 … 60 |
 | C | Peak hold on/off |
 | D | Preset list: UP/DOWN to move, LEFT/RIGHT to page, A or D to tune, B to close |
-| START | Pause. With a PC listening, also saves a screenshot (see below). |
-| SELECT | Hold 1 s: back to Keira. Tap: screenshot, which also works on the preset list. |
+| START | Pause |
+| SELECT | Tap: screenshot to the SD card (see below). Hold 1 s: back to Keira. |
 
 **Gain is fixed by default.** The radio's AGC is built for Wi-Fi packets and
 changes gain on nearly every snapshot. That moves whole waterfall rows by up
@@ -87,26 +88,34 @@ Good first things to try:
 
 ## Screenshots
 
-Connect the Lilka over USB while the app runs, then start:
+**Tap SELECT** to save the screen to the SD card as
+`/screenshots/esp-sdr_001.png`, `esp-sdr_002.png` and so on. That's the same
+folder Keira's own screenshots go to. The status bar confirms it with
+`SAVED 001.PNG`, or shows `NO SD CARD`. It works on the preset list too, and
+the picture leaves out the PAUSED label, so you can pause on a moment first.
+After changing the frequency, span or gain, wait about 10 seconds so the
+waterfall fills before you take a shot.
+
+The PNGs are uncompressed, about 200 KB each. The app never formats the card
+and only ever adds new files.
+
+To get screenshots straight onto a computer instead, connect the Lilka over
+USB, then run:
 
 ```
 pip install pyserial
 python tools/lilka_screenshot.py COM5          # or /dev/ttyACM0 on Linux
 ```
 
-Pressing START (pause) saves the frozen frame as `lilka-sdr-<n>.png`, without
-the PAUSED label; press START again to go on. A short tap of SELECT also saves
-one, and works on the preset list too. After a change of frequency, span or
-gain, wait about 10 seconds so the waterfall fills before you take a shot.
-The app only sends screenshots while a PC is connected over USB.
+Each SELECT tap also lands there as `lilka-sdr-<n>.png`.
 
 ## The bottom of the screen
 
-The app draws on the top 196 rows and leaves the bottom 44 black. The Lilka
-this was developed on has a panel that drops lines in that bottom strip,
-and Keira's own demo apps show the same fault. If your panel is fine, build
-with `-DLILKA_LCD_USED_HEIGHT=240` (or `.\build.ps1 -UsedHeight 240`) to use
-the whole screen.
+The app uses the whole screen. Some panels drop lines in the bottom 40 rows or
+so; the Lilka this was developed on is one of them, and Keira's own demo apps
+show the fault on it too. On such a panel the bottom of the waterfall looks
+garbled. Build with `-DLILKA_LCD_USED_HEIGHT=196` (or
+`.\build.ps1 -UsedHeight 196`) to keep that strip black instead.
 
 ## Build from source
 
@@ -143,6 +152,8 @@ the source of truth. The patch:
     SPI mode 3, the same panel settings;
   * buttons with debounce and auto-repeat;
   * a 5×7 font;
+  * SD card screenshots, mounted on the display's SPI bus and written as
+    uncompressed PNG;
   * the DSP, drawing and controls.
 * **Changes `main/targets/esp32s3/receiver.c`:**
   * splits the snapshot capture out of the serial protocol code;
@@ -150,8 +161,8 @@ the source of truth. The patch:
   * adds a Lilka `app_main` that never touches NVS.
 * **Adds build switches** `ESP_SDR_LILKA` and `LILKA_LCD_USED_HEIGHT`, plus
   `sdkconfig.defaults.lilka`. That file sets 16 MB flash, because Keira's
-  second app slot is at 0x650000, and turns off the NVS writes and the UART
-  protocol.
+  second app slot is at 0x650000. It also turns on FAT long file names for
+  the screenshots, and turns off the NVS writes and the UART protocol.
 
 ## Notes
 

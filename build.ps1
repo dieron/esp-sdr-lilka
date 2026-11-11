@@ -6,9 +6,9 @@
 # applies patches\esp-sdr-lilka.patch.
 param(
     [string]$Root = 'C:\esp',
-    # Screen rows the UI may use. 196 (default) keeps clear of a panel whose
-    # bottom lines are dead, like the development Lilka's; 240 = all.
-    [int]$UsedHeight = 196,
+    # Screen rows the UI may use: 240 (default) = the whole screen; 196 keeps
+    # clear of a panel whose bottom lines are dead, like the development Lilka's.
+    [int]$UsedHeight = 240,
     [string]$Output = 'firmware\esp-sdr-lilka.bin'
 )
 $ErrorActionPreference = 'Stop'

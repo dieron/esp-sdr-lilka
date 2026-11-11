@@ -16,6 +16,7 @@
 /* ST7789 IPS 240x280 on the shared SPI bus (the SD card, CS 16, is unused). */
 #define LILKA_SPI_SCK     18
 #define LILKA_SPI_MOSI    17
+#define LILKA_SPI_MISO    8  /* SD card only; the display is write-only */
 #define LILKA_DISPLAY_DC  15
 #define LILKA_DISPLAY_CS  7
 #define LILKA_SDCARD_CS   16
@@ -33,11 +34,11 @@
 #define LCD_Y_OFFSET 0
 
 /* Rows the UI draws on, from the top; the rest stays black. Set at build time
- * with -DLILKA_LCD_USED_HEIGHT=<rows> (default 196). The development Lilka's
- * panel drops lines in its bottom strip (landscape rows ~198..239, a panel
- * fault that Keira's demo apps show too); 240 uses the whole screen. */
+ * with -DLILKA_LCD_USED_HEIGHT=<rows> (default 240, the whole screen). Use 196
+ * for a panel that drops lines in its bottom strip, like the development
+ * Lilka's (landscape rows ~198..239; Keira's demo apps show it too). */
 #ifndef LCD_USED_HEIGHT
-#define LCD_USED_HEIGHT 196
+#define LCD_USED_HEIGHT 240
 #endif
 #if LCD_USED_HEIGHT < 160 || LCD_USED_HEIGHT > 240
 #error "LCD_USED_HEIGHT must be 160..240"

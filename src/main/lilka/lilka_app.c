@@ -4,6 +4,7 @@
  * Hann-windowed FFTs over it (Welch), draws the spectrum line and pushes one
  * new row onto the waterfall. Snapshots leave gaps between captures, so short
  * bursts can be missed; that is fine for a waterfall. */
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,7 @@
 #include "lilka_buttons.h"
 #include "lilka_display.h"
 #include "lilka_font.h"
+#include "lilka_sd.h"
 #include "sdr_rx.h"
 
 static const char *TAG = "lilka";
@@ -559,14 +561,16 @@ void lilka_early_init(void) {
         "B  GAIN 10-80, THEN AGC",
         "C  PEAK HOLD",
         "D  PRESET LIST (WIFI, BLE, CELL...)",
-        "START  PAUSE (AND SCREENSHOT TO PC)",
-        "SELECT  HOLD: KEIRA, TAP: SCREENSHOT",
+        "START  PAUSE",
+        "SELECT  TAP: SCREENSHOT TO SD CARD",
+        "SELECT  HOLD: BACK TO KEIRA",
     };
     app->ntext = 0;
     text_add(20, 14, 3, c_accent, "ESP-SDR");
     text_add(20, 42, 1, c_dim, "2.4 GHZ SPECTRUM ON THE WI-FI RADIO");
-    for (int i = 0; i < 8; i++) text_add(20, 70 + i * 13, 1, c_text, help[i]);
-    text_add(20, 70 + 8 * 13 + 10, 1, c_dim, "STARTING RADIO...");
+    const int nhelp = (int)(sizeof(help) / sizeof(help[0]));
+    for (int i = 0; i < nhelp; i++) text_add(20, 66 + i * 13, 1, c_text, help[i]);
+    text_add(20, 66 + nhelp * 13 + 8, 1, c_dim, "STARTING RADIO...");
     lcd_draw_rows(0, LCD_HEIGHT, splash_row, NULL);
     splash_ms = now_ms();
 }
@@ -663,36 +667,53 @@ static void handle_menu(const buttons_t *b) {
     }
 }
 
-/* Screenshot: the current frame as text on the USB console, one hex line per
- * row of byte-swapped RGB565 (the wire format, i.e. big-endian RGB565).
- * tools/lilka_screenshot.py turns it into a PNG. */
-static void send_screenshot(void) {
+static void shot_row(int y, uint16_t *row) {
+    render_row(y, row, NULL);
+}
+
+/* Screenshot (SELECT tap): saved to the SD card as /screenshots/esp-sdr_NNN.png
+ * and, when a PC is listening on USB, also sent to tools/lilka_screenshot.py
+ * as one hex line per row of byte-swapped RGB565 (big-endian RGB565). */
+static void take_screenshot(void) {
     static uint16_t row[W];
     static char hex[W * 4 + 1];
     static const char digits[] = "0123456789abcdef";
-    /* Only with a PC on the USB port: without one, console writes wait on
-     * timeouts and would stall the app. */
-    if (!usb_serial_jtag_is_connected()) return;
+    /* The picture shows the view, not the PAUSED label or a status message. */
     bool paused = app->paused;
-    app->paused = false; /* no PAUSED label in the picture */
+    app->paused = false;
     app->msg_until_ms = 0;
     build_text();
     app->paused = paused;
     build_wf_lut();
-    printf("\nLILKA-SHOT BEGIN %d %d\n", W, LCD_HEIGHT);
-    for (int y = 0; y < LCD_HEIGHT; y++) {
-        render_row(y, row, NULL);
-        const uint8_t *p = (const uint8_t *)row;
-        for (int i = 0; i < W * 2; i++) {
-            hex[2 * i] = digits[p[i] >> 4];
-            hex[2 * i + 1] = digits[p[i] & 15];
+
+    char name[32];
+    bool saved = sd_save_screenshot(W, LCD_HEIGHT, shot_row, name, sizeof(name));
+
+    /* USB copy only with a PC on the port: without one, console writes wait
+     * on timeouts and would stall the app. */
+    if (usb_serial_jtag_is_connected()) {
+        printf("\nLILKA-SHOT BEGIN %d %d\n", W, LCD_HEIGHT);
+        for (int y = 0; y < LCD_HEIGHT; y++) {
+            render_row(y, row, NULL);
+            const uint8_t *p = (const uint8_t *)row;
+            for (int i = 0; i < W * 2; i++) {
+                hex[2 * i] = digits[p[i] >> 4];
+                hex[2 * i + 1] = digits[p[i] & 15];
+            }
+            hex[W * 4] = 0;
+            printf("LILKA-SHOT %d %s\n", y, hex);
         }
-        hex[W * 4] = 0;
-        printf("LILKA-SHOT %d %s\n", y, hex);
+        printf("LILKA-SHOT END\n");
+        fflush(stdout);
     }
-    printf("LILKA-SHOT END\n");
-    fflush(stdout);
-    show_message("SCREENSHOT");
+    if (saved) {
+        char m[24];
+        snprintf(m, sizeof(m), "SAVED %.11s", name + 8); /* "SAVED 007.PNG" */
+        for (char *c = m; *c; c++) *c = (char)toupper((unsigned char)*c);
+        show_message(m);
+    } else {
+        show_message("NO SD CARD");
+    }
 }
 
 static void handle_buttons(const buttons_t *b) {
@@ -703,7 +724,7 @@ static void handle_buttons(const buttons_t *b) {
     if (b->down[BTN_SELECT]) {
         select_held = b->held_ms[BTN_SELECT];
     } else if (select_was_down && select_held < EXIT_HOLD_MS) {
-        send_screenshot();
+        take_screenshot();
     }
     select_was_down = b->down[BTN_SELECT];
     if (app->menu_open) {
@@ -747,10 +768,7 @@ static void handle_buttons(const buttons_t *b) {
         app->menu_top = 0;
         menu_move(0);
     }
-    if (b->pressed[BTN_START]) {
-        app->paused = !app->paused;
-        if (app->paused) send_screenshot(); /* pausing also saves the frozen frame */
-    }
+    if (b->pressed[BTN_START]) app->paused = !app->paused;
 }
 
 void lilka_app_run(void) {
